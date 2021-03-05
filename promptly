@@ -35,21 +35,22 @@ cmd_status = 0
 def getprompt(fd):
     global child_running
     pipe_line = []
-    i = 0
+    #i = 0
     while child_running:
         try:
             raw = os.read(fd, 1)
             c = raw.decode()
             pipe_line.append(c)
-            time.sleep(0.001)
+            #time.sleep(0.001)
             continue
         except BlockingIOError:
-            i += 1
-            if i > 2000:
-                break
-            time.sleep(0.001)
-            if not pipe_line:
-                continue
+            #i += 1
+            #if i > 100:
+            #    break
+            #time.sleep(0.01)
+            #if not pipe_line:
+            #    continue
+            break
         except Exception as e:
             print(e)
             return ''
@@ -120,7 +121,10 @@ if __name__ == "__main__":
         time.sleep(1)
         p,s = os.waitpid(pid,os.WNOHANG)
         while child_running:
-            p,s = os.waitpid(pid,os.WNOHANG)
+            try:
+                p,s = os.waitpid(pid,os.WNOHANG)
+            except Exception:
+                break
             prompt = getprompt(fd)
             if not prompt:
                 continue
@@ -129,7 +133,10 @@ if __name__ == "__main__":
                 if re.search(rule['pattern'], prompt):
                     # got a match
                     tosend = rule['input'] + '\n'
-                    os.write(fd, tosend.encode())
+                    try:
+                        os.write(fd, tosend.encode())
+                    except Exception:
+                        break
                     if expiry:
                         rule_map.remove(rule)
                     break

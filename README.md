@@ -50,7 +50,7 @@ newuserpassword123=Rety*
 
 Automated User=Full Name
 
-...
+.....
 
 Y=information correct*
 
@@ -61,7 +61,7 @@ The command will look like
 newuserpassword123=New pass
 newuserpassword123=Rety*
 Automated User=Full Name
-...
+.....
 Y=information correct*
 END
 ```

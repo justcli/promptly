@@ -22,7 +22,7 @@ A simple example would be to automatically enter password to ssh.
 > printf mypassword=Password|ssh myname@hostname
 ```
 #### Examples
-~Automating adduser command~
+**Automating adduser command**
 Let's say you want to create a new user using script. WHile creating user, the adduser command presents many prompts like password for the new user, Full name of the user, verification of the user details etc. Depending on the argument you pass to the adduser command, some prompts may not present themselves at all. With promptly, you just need to list all prompts and the text that you want to enter on the prompt. You can add a regular expression as well. If you pattern matched a prompt, it will be handled. Some of the prompts that the adduser needs throws are -
 password for <username>: (sudo password):
 New password:

@@ -4,8 +4,6 @@ import os
 import sys
 import signal
 import pty
-import termios
-import fcntl
 import time
 import re
 

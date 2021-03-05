@@ -35,22 +35,16 @@ cmd_status = 0
 def getprompt(fd):
     global child_running
     pipe_line = []
-    #i = 0
     while child_running:
         try:
             raw = os.read(fd, 1)
             c = raw.decode()
             pipe_line.append(c)
-            #time.sleep(0.001)
             continue
         except BlockingIOError:
-            #i += 1
-            #if i > 100:
-            #    break
-            #time.sleep(0.01)
-            #if not pipe_line:
-            #    continue
-            break
+            time.sleep(0.0001)
+            if not pipe_line:
+                continue
         except Exception as e:
             print(e)
             return ''
@@ -110,7 +104,6 @@ if __name__ == "__main__":
             if _pattern.startswith('*'):
                 _pattern.replace("*", "[a-zA-Z0-9]", 1)
             rule_map.append({'input': _input, 'pattern': _pattern})
-    print(rule_map)
     signal.signal(signal.SIGCHLD, sighandler)
     pid, fd = pty.fork()
     if pid == 0:
@@ -121,10 +114,7 @@ if __name__ == "__main__":
         time.sleep(1)
         p,s = os.waitpid(pid,os.WNOHANG)
         while child_running:
-            try:
-                p,s = os.waitpid(pid,os.WNOHANG)
-            except Exception:
-                break
+            p,s = os.waitpid(pid,os.WNOHANG)
             prompt = getprompt(fd)
             if not prompt:
                 continue

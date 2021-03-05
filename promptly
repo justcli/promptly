@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import signal
+import pty
+import termios
+import fcntl
+import time
+import re
+
+'''
+Autoprompt fill the intercative prompt on behalf of the user. It enables to
+automate the running of  interactive commands (like ssh, installation etc).
+The command reads the string to be entered from the stdin. The format of the
+input is such that you can tell the command to look for keyword in the prompt
+text and enter some value if the keyword matches. E.g. If the program asks for
+"Enter your name:" then enter the name, if it asks for "directort missing,
+you want to create it [y|n]:", it will enter so. The second prompt may not
+always come.
+
+Usage:
+> echo mypassword123@Password: >> autoprompt sudo mkdir /etc/mydir
+or
+> printf "mypassword123@Password:\nY@*" >> autoprompt sudo mkdir /etc/mydir
+or
+> autoprompt sudo apt-get install some-app <<END
+mypassword@Password:
+Y@*[Y|n]
+N@*[n|Y]
+'''
+
+child_running = 1
+cmd_status = 0
+
+def getprompt(fd):
+    global child_running
+    pipe_line = []
+    i = 0
+    while child_running:
+        try:
+            raw = os.read(fd, 1)
+            c = raw.decode()
+            pipe_line.append(c)
+            time.sleep(0.001)
+            continue
+        except BlockingIOError:
+            i += 1
+            if i > 2000:
+                break
+            time.sleep(0.001)
+            if not pipe_line:
+                continue
+        except Exception as e:
+            print(e)
+            return ''
+        break
+    # the prompt may contain many lines...return the last line
+    if not pipe_line:
+        return ''
+    output = ''.join(pipe_line)
+    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
+    output = ansi_escape.sub('', str(output))
+    output = output.split('\n')
+    for e in output:
+        if not e:
+            output.remove(e)
+    return output[-1:][0]
+
+
+def sighandler(a, b):
+    global child_running, cmd_status
+    child_running = 0
+    _,cmd_status = os.waitpid(-1, os.WNOHANG)
+
+if __name__ == "__main__":
+    rule_map = []
+    user_cmd = sys.argv[1:]
+    # read the user prompt rules
+    user_rules = sys.stdin.read().split('\n')
+    if not user_rules:
+        print("Prompt pattern missing", file=sys.stderr)
+        exit(1)
+    for e in user_rules:
+        if not e:
+            user_rules.remove(e)
+        else:
+            _toks = e.split('=')
+            if len(_toks) != 2:
+                print("Rule must be in input=pattern format", file=sys.stderr)
+                exit(1)
+            _input = _toks[0]
+            _pattern = _toks[1]
+            rule_map.append({'input': _input, 'pattern': _pattern})
+    print(rule_map)
+    signal.signal(signal.SIGCHLD, sighandler)
+    pid, fd = pty.fork()
+    if pid == 0:
+        # run the user command
+        os.execvp(user_cmd[0], user_cmd)
+    elif pid > 0:
+        #set_rawmode(fd)
+        os.set_blocking(fd, False)
+        time.sleep(1)
+        p,s = os.waitpid(pid,os.WNOHANG)
+        while child_running:
+            p,s = os.waitpid(pid,os.WNOHANG)
+            prompt = getprompt(fd)
+            if not prompt:
+                continue
+            # chk if the prompt meets any user pattern
+            for rule in rule_map:
+                if re.search(rule['pattern'], prompt):
+                    # got a match
+                    tosend = rule['input'] + '\n'
+                    os.write(fd, tosend.encode())
+                    break
+        os.close(fd)
+        if os.WIFEXITED(cmd_status):
+            cmd_status = os.WEXITSTATUS(cmd_status)
+        exit(cmd_status)

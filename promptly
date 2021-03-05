@@ -10,7 +10,7 @@ import time
 import re
 
 '''
-Autoprompt fill the intercative prompt on behalf of the user. It enables to
+promptly fill the intercative prompt on behalf of the user. It enables to
 automate the running of  interactive commands (like ssh, installation etc).
 The command reads the string to be entered from the stdin. The format of the
 input is such that you can tell the command to look for keyword in the prompt
@@ -20,14 +20,15 @@ you want to create it [y|n]:", it will enter so. The second prompt may not
 always come.
 
 Usage:
-> echo mypassword123@Password: >> autoprompt sudo mkdir /etc/mydir
+> promptly [-onetime] {command} [command arg1] [command arg2] ...
+> echo Password:>mypassword123 >> promptly sudo mkdir /etc/mydir
 or
-> printf "mypassword123@Password:\nY@*" >> autoprompt sudo mkdir /etc/mydir
+> printf "Password:>mypassword\n*>Y" >> promptly sudo mkdir /etc/mydir
 or
-> autoprompt sudo apt-get install some-app <<END
-mypassword@Password:
-Y@*[Y|n]
-N@*[n|Y]
+> promptly sudo apt-get install some-app <<END
+Password:mypasswd
+[Y|n]>Y
+[y|N]>n
 '''
 
 child_running = 1
@@ -68,14 +69,30 @@ def getprompt(fd):
     return output[-1:][0]
 
 
+
 def sighandler(a, b):
     global child_running, cmd_status
     child_running = 0
     _,cmd_status = os.waitpid(-1, os.WNOHANG)
 
+
+
+def unhandled_exception(ex_type, msg, bt):
+    sys.stderr.write('Something went wrong. Check out the prompt rules and arguments.\n')
+    sys.stderr.flush()
+
+sys.excepthook = unhandled_exception
+
+
+
 if __name__ == "__main__":
     rule_map = []
+    onetime = False
+    peek = False
     user_cmd = sys.argv[1:]
+    if '-onetime' in user_cmd:
+        onetime = True
+        user_cmd.remove('-onetime')
     # read the user prompt rules
     user_rules = sys.stdin.read().split('\n')
     if not user_rules:
@@ -85,12 +102,14 @@ if __name__ == "__main__":
         if not e:
             user_rules.remove(e)
         else:
-            _toks = e.split('=')
+            _toks = e.split('>')
             if len(_toks) != 2:
                 print("Rule must be in input=pattern format", file=sys.stderr)
                 exit(1)
-            _input = _toks[0]
-            _pattern = _toks[1]
+            _pattern = _toks[0]
+            _input = _toks[1]
+            if _pattern.startswith('*'):
+                _pattern.replace("*", "[a-zA-Z0-9]", 1)
             rule_map.append({'input': _input, 'pattern': _pattern})
     print(rule_map)
     signal.signal(signal.SIGCHLD, sighandler)
@@ -99,7 +118,6 @@ if __name__ == "__main__":
         # run the user command
         os.execvp(user_cmd[0], user_cmd)
     elif pid > 0:
-        #set_rawmode(fd)
         os.set_blocking(fd, False)
         time.sleep(1)
         p,s = os.waitpid(pid,os.WNOHANG)
@@ -114,6 +132,8 @@ if __name__ == "__main__":
                     # got a match
                     tosend = rule['input'] + '\n'
                     os.write(fd, tosend.encode())
+                    if onetime:
+                        rule_map.remove(rule)
                     break
         os.close(fd)
         if os.WIFEXITED(cmd_status):

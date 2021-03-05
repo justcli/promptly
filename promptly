@@ -20,7 +20,7 @@ you want to create it [y|n]:", it will enter so. The second prompt may not
 always come.
 
 Usage:
-> promptly [-onetime] {command} [command arg1] [command arg2] ...
+> promptly [-expiry] {command} [command arg1] [command arg2] ...
 > echo Password:>mypassword123 >> promptly sudo mkdir /etc/mydir
 or
 > printf "Password:>mypassword\n*>Y" >> promptly sudo mkdir /etc/mydir
@@ -87,12 +87,12 @@ sys.excepthook = unhandled_exception
 
 if __name__ == "__main__":
     rule_map = []
-    onetime = False
+    expiry = False
     peek = False
     user_cmd = sys.argv[1:]
-    if '-onetime' in user_cmd:
-        onetime = True
-        user_cmd.remove('-onetime')
+    if '-expiry' in user_cmd:
+        expiry = True
+        user_cmd.remove('-expiry')
     # read the user prompt rules
     user_rules = sys.stdin.read().split('\n')
     if not user_rules:
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                     # got a match
                     tosend = rule['input'] + '\n'
                     os.write(fd, tosend.encode())
-                    if onetime:
+                    if expiry:
                         rule_map.remove(rule)
                     break
         os.close(fd)

@@ -18,7 +18,7 @@ you want to create it [y|n]:", it will enter so. The second prompt may not
 always come.
 
 Usage:
-> promptly [-expiry] {command} [command arg1] [command arg2] ...
+> promptly [-expiry] {command} [arg1] [arg2] ...}
 > echo Password:>mypassword123 >> promptly sudo mkdir /etc/mydir
 or
 > printf "Password:>mypassword\n*>Y" >> promptly sudo mkdir /etc/mydir
@@ -71,7 +71,8 @@ def sighandler(a, b):
 
 
 def unhandled_exception(ex_type, msg, bt):
-    sys.stderr.write('Something went wrong. Check out the prompt rules and arguments.\n')
+    sys.stderr.write('Something went wrong. '
+                     'Check out the prompt rules and arguments.\n')
     sys.stderr.flush()
 
 sys.excepthook = unhandled_exception
@@ -97,7 +98,7 @@ if __name__ == "__main__":
         else:
             _toks = e.split('>')
             if len(_toks) != 2:
-                print("Rule must be in input=pattern format", file=sys.stderr)
+                print("Rule must be in input>pattern format", file=sys.stderr)
                 exit(1)
             _pattern = _toks[0]
             _input = _toks[1]
